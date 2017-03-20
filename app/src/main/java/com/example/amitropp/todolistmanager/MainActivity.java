@@ -13,7 +13,6 @@ import android.widget.ArrayAdapter;
 import android.widget.EditText;
 import android.widget.ListView;
 import android.widget.TextView;
-
 import org.apache.commons.io.FileUtils;
 import java.io.File;
 import java.util.ArrayList;
@@ -21,7 +20,7 @@ import 	java.io.IOException;
 
 
 public class MainActivity extends AppCompatActivity {
-
+    //needed variables
     private ArrayList<String> items;
     private ArrayAdapter<String> itemsAdapter;
     private ListView lvItems;
@@ -29,13 +28,12 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        // true = red, false = blue
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         lvItems = (ListView) findViewById(R.id.lvItems);
         items = new ArrayList<String>();
         readItems();
-
+        //adapter with the text color condition (odd-red, even-blue)
         itemsAdapter = new ArrayAdapter<String>(this,
                 android.R.layout.simple_list_item_1, items) {
             @Override
@@ -50,7 +48,7 @@ public class MainActivity extends AppCompatActivity {
                 return tv;
             }
         };
-        
+
         lvItems.setAdapter(itemsAdapter);
         // Setup remove listener method call
         setupListViewListener();
@@ -58,6 +56,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void setupListViewListener() {
+        //on long click - open dialog with delete button
         lvItems.setOnItemLongClickListener(
                 new AdapterView.OnItemLongClickListener() {
                     @Override
@@ -74,7 +73,6 @@ public class MainActivity extends AppCompatActivity {
                                         // Refresh the adapter
                                         itemsAdapter.notifyDataSetChanged();
                                         writeItems();
-                                        // Return true consumes the long click event (marks it handled)
                                         dialog.dismiss();
                                     }
                                 });
@@ -91,7 +89,6 @@ public class MainActivity extends AppCompatActivity {
         EditText etNewItem = (EditText) findViewById(R.id.enterNewItem);
         String itemText = etNewItem.getText().toString();
         itemsAdapter.add(itemText);
-
         etNewItem.setText("");
         writeItems();
         scrollMyListViewToBottom();
