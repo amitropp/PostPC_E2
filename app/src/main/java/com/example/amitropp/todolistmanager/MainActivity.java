@@ -1,25 +1,19 @@
 package com.example.amitropp.todolistmanager;
 
-import android.content.Context;
-import android.graphics.Color;
+
+import android.app.AlertDialog;
+import android.content.DialogInterface;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
-import android.util.Log;
-import android.view.LayoutInflater;
 import android.view.View;
-import android.view.ViewGroup;
-import android.widget.Adapter;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
-import android.widget.BaseAdapter;
 import android.widget.EditText;
 import android.widget.ListView;
 import org.apache.commons.io.FileUtils;
 import java.io.File;
 import java.util.ArrayList;
 import 	java.io.IOException;
-
-import static java.security.AccessController.getContext;
 
 
 public class MainActivity extends AppCompatActivity {
@@ -28,6 +22,8 @@ public class MainActivity extends AppCompatActivity {
     private ArrayAdapter<String> itemsAdapter;
     private ListView lvItems;
     private boolean color;
+    private AlertDialog alertDialog;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         // true = red, false = blue
@@ -37,11 +33,32 @@ public class MainActivity extends AppCompatActivity {
         lvItems = (ListView) findViewById(R.id.lvItems);
         items = new ArrayList<String>();
         readItems();
+
+        /*itemsAdapter = new ArrayAdapter<String>(this,
+                android.R.layout.simple_list_item_1, items) {
+            @Override
+            public View getView(int position, View convertView, ViewGroup parent) {
+                TextView v = (TextView) LayoutInflater.from(parent.getContext()).inflate(R.layout.my_text_view, parent, false);
+                if(items.get(position) != null )
+                if (color == true) {
+                    lvItems.setBackgroundColor(Color.RED);
+                } else {
+                    lvItems.setBackgroundColor(Color.YELLOW);
+                }
+                color = !color;
+
+                ViewHolder vh = new ViewHolder(v);
+                return vh;
+            }
+        };*/
+
+
         itemsAdapter = new ArrayAdapter<String>(this,
                 android.R.layout.simple_list_item_1, items);
         lvItems.setAdapter(itemsAdapter);
         // Setup remove listener method call
         setupListViewListener();
+
     }
 
     private void setupListViewListener() {
@@ -50,34 +67,35 @@ public class MainActivity extends AppCompatActivity {
                     @Override
                     public boolean onItemLongClick(AdapterView<?> adapter,
                                                    View item, int pos, long id) {
-                        // Remove the item within array at position
-                        items.remove(pos);
-                        // Refresh the adapter
-                        itemsAdapter.notifyDataSetChanged();
-                        writeItems();
-                        // Return true consumes the long click event (marks it handled)
+                        final int index = pos;
+                        CharSequence cs = "Delete";
+                        AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
+                        builder.setTitle(items.get(pos).toString()) //
+                                .setPositiveButton(cs, new DialogInterface.OnClickListener() {
+                                    public void onClick(DialogInterface dialog, int id) {
+                                        // Remove the item within array at position
+                                        items.remove(index);
+                                        // Refresh the adapter
+                                        itemsAdapter.notifyDataSetChanged();
+                                        writeItems();
+                                        // Return true consumes the long click event (marks it handled)
+                                        dialog.dismiss();
+                                    }
+                                });
+
+                        builder.show();
                         return true;
                     }
 
-                    @Override
-                    public void onItemClick(AdapterView<?> adpterView, View view, int position,
-                                            long id) {
-                        if (color == true) {
-                            lvItems.getChildAt(itemsAdapter.getCount() - 1).setBackgroundColor(Color.RED);
-                            color = false;
-                        } else {
-                            lvItems.getChildAt(itemsAdapter.getCount() - 1).setBackgroundColor(Color.BLUE);
-                            color = false;
-                        }
-                    }
+
                 });
     }
-
 
     public void onAddItem(View v) {
         EditText etNewItem = (EditText) findViewById(R.id.enterNewItem);
         String itemText = etNewItem.getText().toString();
         itemsAdapter.add(itemText);
+
         etNewItem.setText("");
         writeItems();
         scrollMyListViewToBottom();
