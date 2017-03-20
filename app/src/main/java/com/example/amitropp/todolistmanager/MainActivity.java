@@ -3,13 +3,17 @@ package com.example.amitropp.todolistmanager;
 
 import android.app.AlertDialog;
 import android.content.DialogInterface;
+import android.graphics.Color;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.EditText;
 import android.widget.ListView;
+import android.widget.TextView;
+
 import org.apache.commons.io.FileUtils;
 import java.io.File;
 import java.util.ArrayList;
@@ -21,40 +25,32 @@ public class MainActivity extends AppCompatActivity {
     private ArrayList<String> items;
     private ArrayAdapter<String> itemsAdapter;
     private ListView lvItems;
-    private boolean color;
     private AlertDialog alertDialog;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         // true = red, false = blue
-        color = true;
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         lvItems = (ListView) findViewById(R.id.lvItems);
         items = new ArrayList<String>();
         readItems();
 
-        /*itemsAdapter = new ArrayAdapter<String>(this,
+        itemsAdapter = new ArrayAdapter<String>(this,
                 android.R.layout.simple_list_item_1, items) {
             @Override
             public View getView(int position, View convertView, ViewGroup parent) {
-                TextView v = (TextView) LayoutInflater.from(parent.getContext()).inflate(R.layout.my_text_view, parent, false);
-                if(items.get(position) != null )
-                if (color == true) {
-                    lvItems.setBackgroundColor(Color.RED);
+                TextView tv = (TextView) super.getView(position, convertView, parent);
+
+                if ((position % 2) == 0) {
+                    tv.setTextColor(Color.RED);
                 } else {
-                    lvItems.setBackgroundColor(Color.YELLOW);
+                    tv.setTextColor(Color.BLUE);
                 }
-                color = !color;
-
-                ViewHolder vh = new ViewHolder(v);
-                return vh;
+                return tv;
             }
-        };*/
-
-
-        itemsAdapter = new ArrayAdapter<String>(this,
-                android.R.layout.simple_list_item_1, items);
+        };
+        
         lvItems.setAdapter(itemsAdapter);
         // Setup remove listener method call
         setupListViewListener();
