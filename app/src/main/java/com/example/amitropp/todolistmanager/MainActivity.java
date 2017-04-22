@@ -1,17 +1,13 @@
 package com.example.amitropp.todolistmanager;
 
-
 import android.app.AlertDialog;
 import android.app.DatePickerDialog;
-import android.app.Dialog;
-import android.app.DialogFragment;
-import android.app.TimePickerDialog;
-import android.content.Context;
 import android.content.DialogInterface;
+import android.content.Intent;
 import android.graphics.Color;
+import android.net.Uri;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
-import android.text.format.DateFormat;
 import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
@@ -23,15 +19,20 @@ import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.TextView;
-import android.widget.TimePicker;
+
+import com.google.firebase.database.ChildEventListener;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.Query;
+import com.google.firebase.database.ValueEventListener;
 
 import org.apache.commons.io.FileUtils;
 import java.io.File;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import 	java.io.IOException;
 import java.util.Calendar;
-import java.util.Locale;
 
 
 public class MainActivity extends AppCompatActivity {
@@ -39,14 +40,21 @@ public class MainActivity extends AppCompatActivity {
     private ArrayList<String> items;
     private ArrayAdapter<String> itemsAdapter;
     private ListView lvItems;
+    private DatabaseReference mDatabase;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        mDatabase = FirebaseDatabase.getInstance().getReference();
+        addDBListenter(mDatabase);
+
         lvItems = (ListView) findViewById(R.id.lvItems);
         items = new ArrayList<String>();
         readItems();
+
         //adapter with the text color condition (odd-red, even-blue)
         itemsAdapter = new ArrayAdapter<String>(this,
                 android.R.layout.simple_list_item_1, items) {
@@ -70,14 +78,18 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void setupListViewListener() {
+
         //on long click - open dialog with delete button
+
+        final Button btn = new Button(MainActivity.this);
+        btn.setHint("Call");
         lvItems.setOnItemLongClickListener(
                 new AdapterView.OnItemLongClickListener() {
                     @Override
                     public boolean onItemLongClick(AdapterView<?> adapter,
                                                    View item, int pos, long id) {
                         final int index = pos;
-                        CharSequence cs = "Delete";
+                        CharSequence cs = "Delete Item";
                         AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
                         builder.setTitle(items.get(pos).toString()) //
                                 .setPositiveButton(cs, new DialogInterface.OnClickListener() {
@@ -86,10 +98,24 @@ public class MainActivity extends AppCompatActivity {
                                         items.remove(index);
                                         // Refresh the adapter
                                         itemsAdapter.notifyDataSetChanged();
+                                        final String itemToBeRemoved = items.get(index);
+                                        removeItemFromFirebase(itemToBeRemoved);
                                         writeItems();
                                         dialog.dismiss();
                                     }
                                 });
+                                if ((items.get(pos).toString()).toLowerCase().contains("call")){
+                                    final String number = (items.get(pos).toString()).split("call")[1];
+                                    builder.setView(btn);
+                                    btn.setOnClickListener(new View.OnClickListener() {
+                                        @Override
+                                        public void onClick(View view) {
+                                            Intent intent = new Intent(Intent.ACTION_DIAL);
+                                            intent.setData(Uri.parse("tel:" + number));
+                                            startActivity(intent);
+                                        }
+                                    });
+                                }
 
                         builder.show();
                         return true;
@@ -119,7 +145,6 @@ public class MainActivity extends AppCompatActivity {
         final EditText date = new EditText(MainActivity.this);
 
 
-
         input.setHint("Title");
         layout.addView(input);
 
@@ -132,7 +157,6 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View view) {
                 //showDatePickerDialog((EditText) view);
-                // TODO Auto-generated method stub
                 //To show current date in the datepicker
                 Calendar mcurrentDate=Calendar.getInstance();
                 int mYear=mcurrentDate.get(Calendar.YEAR);
@@ -155,12 +179,13 @@ public class MainActivity extends AppCompatActivity {
                 .setMessage(msg)
                 .setPositiveButton(add, new DialogInterface.OnClickListener() {
                     public void onClick(DialogInterface dialog, int id) {
-                        // Remove the item within array at position
+                        // add the item within array at position
                         // Refresh the adapter
                         itemsAdapter.notifyDataSetChanged();
                         String itemText = input.getText().toString() + ",\t" + date.getText().toString();
                         itemsAdapter.add(itemText);
                         writeItems();
+                        mDatabase.push().setValue(itemText);
                         scrollMyListViewToBottom();
                         dialog.dismiss();
                     }
@@ -188,15 +213,6 @@ public class MainActivity extends AppCompatActivity {
 
         });
 
-
-        /*
-        EditText etNewItem = (EditText) findViewById(R.id.enterNewItem);
-        String itemText = etNewItem.getText().toString();
-        itemsAdapter.add(itemText);
-        etNewItem.setText("");
-        writeItems();
-        scrollMyListViewToBottom();
-        */
     }
 
     private void readItems() {
@@ -225,6 +241,75 @@ public class MainActivity extends AppCompatActivity {
             public void run() {
                 // Select the last row so it will scroll into view...
                 lvItems.setSelection(itemsAdapter.getCount() - 1);
+            }
+        });
+    }
+
+    private void addDBListenter(DatabaseReference newRef)
+    {
+        newRef.addChildEventListener(new ChildEventListener() {
+            @Override
+            public void onChildAdded(DataSnapshot dataSnapshot, String prevChildKey) {
+                String newItem = dataSnapshot.getValue(String.class);
+                if (newItem != null)
+                    Log.d("tagChildAdded", "Value is: " + newItem.split(",")[0]);
+                //addTdlToScreen(newItem);
+
+            }
+
+            @Override
+            public void onChildChanged(DataSnapshot dataSnapshot, String s) {
+
+            }
+
+            @Override
+            public void onChildRemoved(DataSnapshot dataSnapshot) {
+                String item = dataSnapshot.getValue(String.class);
+                if (item != null)
+                    Log.d("tagChildRemoved", "Value is: " + item.split(",")[0]);
+                //removeTdlFromScreen(item);
+            }
+
+            @Override
+            public void onChildMoved(DataSnapshot dataSnapshot, String s) {
+
+            }
+
+            @Override
+            public void onCancelled(DatabaseError error) {
+                // Failed to read value
+                Log.w("tagDataCancelled", "Failed to read value.", error.toException());
+            }
+        });
+
+    }
+
+    //remove the tdlItem given as an argument from the database of firebase
+    public void removeItemFromFirebase(final String itemToBeRemoved)
+    {
+        final Query query = mDatabase.orderByValue();
+        Log.d("logTaskFound", itemToBeRemoved.split(",")[0]);
+        query.addValueEventListener(new ValueEventListener() {
+            @Override
+            public void onDataChange(DataSnapshot dataSnapshot) {
+                for (DataSnapshot task : dataSnapshot.getChildren())
+                {
+                    String item = task.getValue(String.class);
+                    Log.d("logTaskFound", item.split(",")[0]);
+                    if (item.equals(itemToBeRemoved))
+                    {
+                        task.getRef().removeValue();
+                        query.removeEventListener(this);
+                        break;
+                    }
+                }
+
+
+            }
+
+            @Override
+            public void onCancelled(DatabaseError databaseError) {
+
             }
         });
     }
