@@ -2,6 +2,7 @@ package com.example.amitropp.todolistmanager;
 
 import android.app.AlertDialog;
 import android.app.DatePickerDialog;
+import android.app.Dialog;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Color;
@@ -37,6 +38,7 @@ import java.util.Calendar;
 
 public class MainActivity extends AppCompatActivity {
     //needed variables
+    private static final String TAB_NAME = "missions";
     private ArrayList<String> items;
     private ArrayAdapter<String> itemsAdapter;
     private ListView lvItems;
@@ -48,12 +50,13 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        mDatabase = FirebaseDatabase.getInstance().getReference();
+
+        FirebaseDatabase database = FirebaseDatabase.getInstance();
+        mDatabase = database.getReference(TAB_NAME);
         addDBListenter(mDatabase);
 
         lvItems = (ListView) findViewById(R.id.lvItems);
         items = new ArrayList<String>();
-        readItems();
 
         //adapter with the text color condition (odd-red, even-blue)
         itemsAdapter = new ArrayAdapter<String>(this,
@@ -95,17 +98,15 @@ public class MainActivity extends AppCompatActivity {
                                 .setPositiveButton(cs, new DialogInterface.OnClickListener() {
                                     public void onClick(DialogInterface dialog, int id) {
                                         // Remove the item within array at position
-                                        items.remove(index);
-                                        // Refresh the adapter
-                                        itemsAdapter.notifyDataSetChanged();
-                                        final String itemToBeRemoved = items.get(index);
-                                        removeItemFromFirebase(itemToBeRemoved);
-                                        writeItems();
-                                        dialog.dismiss();
+                                        final String itemToRemoved = items.get(index);
+                                        Log.d("firebaseLog", "~~~here");
+                                        removeItemFromFirebase(itemToRemoved);
+
                                     }
                                 });
                                 if ((items.get(pos).toString()).toLowerCase().contains("call")){
-                                    final String number = (items.get(pos).toString()).split("call")[1];
+                                    final String number = (((items.get(pos).toString()).split("call")[1]).split(",")[0]).trim();
+                                    Log.d("Number: ", number);
                                     builder.setView(btn);
                                     btn.setOnClickListener(new View.OnClickListener() {
                                         @Override
@@ -175,19 +176,15 @@ public class MainActivity extends AppCompatActivity {
         });
 
 
-        builder.setTitle("Add new Item") //
+        builder.setTitle("Add new Item")
                 .setMessage(msg)
                 .setPositiveButton(add, new DialogInterface.OnClickListener() {
                     public void onClick(DialogInterface dialog, int id) {
-                        // add the item within array at position
-                        // Refresh the adapter
-                        itemsAdapter.notifyDataSetChanged();
+                        // add the item to the cloud
+                        Log.d("firebaseLog", "~~~here1");
                         String itemText = input.getText().toString() + ",\t" + date.getText().toString();
-                        itemsAdapter.add(itemText);
-                        writeItems();
                         mDatabase.push().setValue(itemText);
-                        scrollMyListViewToBottom();
-                        dialog.dismiss();
+
                     }
                 })
                 .setNegativeButton(can, new DialogInterface.OnClickListener() {
@@ -214,6 +211,7 @@ public class MainActivity extends AppCompatActivity {
         });
 
     }
+
 
     private void readItems() {
         File filesDir = getFilesDir();
@@ -253,7 +251,7 @@ public class MainActivity extends AppCompatActivity {
                 String newItem = dataSnapshot.getValue(String.class);
                 if (newItem != null)
                     Log.d("tagChildAdded", "Value is: " + newItem.split(",")[0]);
-                //addTdlToScreen(newItem);
+                addItemToScreen(newItem);
 
             }
 
@@ -267,7 +265,7 @@ public class MainActivity extends AppCompatActivity {
                 String item = dataSnapshot.getValue(String.class);
                 if (item != null)
                     Log.d("tagChildRemoved", "Value is: " + item.split(",")[0]);
-                //removeTdlFromScreen(item);
+                removeItemFromScreen(item);
             }
 
             @Override
@@ -284,10 +282,41 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
+    public void addItemToScreen(String newItem) {
+
+        // Refresh the adapter
+
+        itemsAdapter.notifyDataSetChanged();
+        itemsAdapter.add(newItem);
+        writeItems();
+        //scroll to the bottom of the list
+        scrollMyListViewToBottom();
+
+    }
+
+    public void removeItemFromScreen(String item){
+
+        items.remove(getIndex(item));
+        // Refresh the adapter
+        itemsAdapter.notifyDataSetChanged();
+
+
+    }
+    private int getIndex(String item){
+        for (int pos = 0; pos < items.size(); pos++){
+            String it = items.get(pos);
+            if (it.equals(item)){
+                return pos;
+            }
+        }
+        return -1;
+    }
+
     //remove the tdlItem given as an argument from the database of firebase
-    public void removeItemFromFirebase(final String itemToBeRemoved)
-    {
+    public void removeItemFromFirebase(final String itemToBeRemoved) {
+
         final Query query = mDatabase.orderByValue();
+        //print item body
         Log.d("logTaskFound", itemToBeRemoved.split(",")[0]);
         query.addValueEventListener(new ValueEventListener() {
             @Override
